@@ -1,0 +1,181 @@
+variables:
+  DATABRICKS_HOST: "https://westeurope.azuredatabricks.net"
+  PACKAGE_NAME: "my_python_lib"
+  PYTHON_BASE_IMAGE: python:3.5.7-stretch
+
+stages:
+- test
+- package
+- deploy
+
+Unit Test:
+  image: ${PYTHON_BASE_IMAGE}
+  stage: test
+  script:
+  - pip install -r requirements.txt
+  - py.test test/  --cov-report xml:coverage/cov_html --cov=${PACKAGE_NAME} test/
+  artifacts:
+    expire_in: 1 days
+    paths:
+    - coverage
+    when: always
+  coverage: '/^TOTAL\s+\d+\s+\d+\s+(\d+\%)$/'
+  except:
+    - tags
+
+Check Versions:
+  # Checks if the tag version matched the Job version specified in `./version`
+  stage: test
+  script:
+  - VERSION=$(cat version | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+  - |
+    if [ "$CI_COMMIT_REF_NAME" == "$VERSION" ]; then
+        echo "Versions match"
+    else
+        echo "Git tag is not consistent with package tag"
+        exit 1
+    fi
+  only:
+  - tags
+
+.databricks_login: &databricks_login
+  before_script:
+  - |
+    conf=`cat << EOM
+    ${DATABRICKS_HOST}
+    ${DATABRICKS_ACCESS_TOKEN}
+    EOM`
+
+    echo "$conf" | databricks configure --token
+
+.package_script: &package_script
+  image: ${PYTHON_BASE_IMAGE}
+  stage: package
+  script:
+  - VERSION=$(cat version | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+  - VERSION=${VERSION}${POST_FIX}
+  - sed -i "s/\(.*\)latest/\1$VERSION/" ${PACKAGE_NAME}/_version.py
+  - python setup.py bdist_egg
+  artifacts:
+    paths:
+    - dist/*.egg
+    expire_in: 1 day
+  only:
+  - tags
+  - master
+
+
+Package - Staging:
+  <<: *package_script
+  stage: package
+  variables:
+    POST_FIX: -${CI_COMMIT_SHA}
+  environment:
+    name: staging
+  only:
+    - master
+
+Package - Production:
+  <<: *package_script
+  stage: package
+  environment:
+    name: production
+  only:
+  - tags
+
+
+.deployment_library: &deployment_script_library
+  <<: *databricks_login
+  image: frosforever/databricks-cli
+  stage: deploy
+  script:
+    #TODO: Include this in library
+  - VERSION=$(cat version | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+  - VERSION=${VERSION}${POST_FIX}
+  - databricks fs cp dist/${PACKAGE_NAME}-${VERSION}-py3.5.egg dbfs:/python35/${PACKAGE_NAME}/${PACKAGE_NAME}-${VERSION}-py3.5.egg
+
+Deploy Library - Staging:
+  <<: *deployment_script_library
+  variables:
+    POST_FIX: _${CI_COMMIT_SHA}
+  environment:
+    name: staging
+  only:
+    - master
+
+Deploy Library - Production:
+  <<: *deployment_script_library
+  environment:
+    name: production
+  only:
+  - tags
+
+.deployment_script_notebook: &deployment_script_notebook
+  <<: *databricks_login
+  image: frosforever/databricks-cli
+  stage: deploy
+  script:
+    #TODO: Include this process into library
+  - VERSION=$(cat version | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+  - VERSION=${VERSION}${POST_FIX}
+  - databricks workspace mkdirs /Shared/my-etl-job/${NAMESPACE}/${VERSION}
+  - |
+    for i in $(echo "job_1,job_2,main_notebook" | sed "s/,/ /g")
+    do
+        echo "Importing ${i}"
+        databricks workspace import "notebooks/${i}.py" "/Shared/my-etl-job/${NAMESPACE}/${VERSION}/${i}" --language=python --overwrite
+    done
+
+Deploy Notebook - Staging:
+  <<: *deployment_script_notebook
+  variables:
+    NAMESPACE: staging
+    POST_FIX: _${CI_COMMIT_SHA}
+  environment:
+    name: staging
+  only:
+   - master
+
+Deploy Notebook - Production:
+  <<: *deployment_script_notebook
+  variables:
+    NAMESPACE: production
+  environment:
+    name: production
+  only:
+  - tags
+
+.deployment_script_job: &deployment_script_job
+  image: python:3.5.7-stretch
+  stage: deploy
+  script:
+  - VERSION=$(cat version | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+  - VERSION=${VERSION}${POST_FIX}
+  - pip install dbloy
+  - |
+    conf=`cat << EOM
+    ${DATABRICKS_HOST}
+    ${DATABRICKS_ACCESS_TOKEN}
+    EOM`
+
+    echo "$conf" | dbloy configure
+  - dbloy apply --deploy-yml databricks/deploy.yml --configmap-yml databricks/configmap-${NAMESPACE}.yml --version ${VERSION}
+
+Deploy Job - Staging:
+  <<: *deployment_script_job
+  variables:
+    NAMESPACE: staging
+    POST_FIX: _${CI_COMMIT_SHA}
+  environment:
+    name: staging
+  only:
+    - master
+
+Deploy Job - Production:
+  <<: *deployment_script_job
+  variables:
+    NAMESPACE: production
+  environment:
+    name: production
+  only:
+  - tags

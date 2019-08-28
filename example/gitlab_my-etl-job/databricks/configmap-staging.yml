@@ -1,0 +1,11 @@
+kind: ConfigMap
+metadata:
+  namespace: staging
+params:
+  DB_URL: staging_db_url_1
+  DB_PASSWORD: staging_password123
+job:
+  id: 288
+  max_retries: 0
+cluster:
+  cluster_id: "0709-095525-yuks199"

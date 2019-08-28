@@ -1,0 +1,31 @@
+kind: Deployment
+metadata:
+  name: my-etl-job
+  workspace: Shared
+template:
+  job:
+    name: My ETL Job
+  notifications:
+    email:
+      no_alert_for_skipped_runs: true
+      on_failure :
+        - my_email@my_org.com
+  base_notebook: main_notebook
+  notebooks:
+  - NOTEBOOK_1_NAME: job_1
+  - NOTEBOOK_2_NAME: job_2
+  libraries:
+    - egg_main: dbfs:/python35/my_python_lib/my_python_lib-VERSION-py3.5.egg
+    - pypi:
+        package: scikit-learn==0.20.3
+    - pypi:
+        package: statsmodels==0.10.1
+    - pypi:
+        package: prometheus-client==0.7.1
+    - jar: dbfs:/FileStore/jars/e9b87e4c_c754_4707_a62a_44ef47535b39-azure_cosmosdb_spark_2_4_0_2_11_1_3_4_uber-38021.jar
+  run:
+    max_concurrent_runs: 1
+    max_retries: 1
+    min_retry_interval_millis: 600000
+    retry_on_timeout: true
+    timeout_seconds: 10800
