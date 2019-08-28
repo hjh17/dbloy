@@ -12,19 +12,9 @@ $ pip install dbloy
 
 ![databricks workflow](https://databricks.com/wp-content/uploads/2017/10/CI-CD-BLOG4@2x-1024x211.png "databricks workflow")
  
+![example workflow](https://github.com/hjh17/dbloy/blob/master/uml.png?raw=true "example workflow")
+ 
 
-```mermaid
-sequenceDiagram
-Master->>Alice: Pull latest
-Alice->>Databricks UI: Import latest
-Note left of Databricks UI: Feature developed<br/>with Databricks UI<br/>
-Databricks UI->>Alice: Export new changes
-Alice->>Master: Push new changes
-Master->>Staging: Deploy to Staging
-Note right of Master: Deployed with DBloy
-Staging->>Production: Deploy to Production
-Note right of Staging: Deployed with DBloy
-``` 
 
  
 ## Example Usage
