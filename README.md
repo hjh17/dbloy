@@ -8,9 +8,10 @@ A Databricks deployment CLI tool to enable Continuous Delivery of PySpark Notebo
 $ pip install dbloy
 ````
 
-## Workflow
+## Example Workflow
 
 ![databricks workflow](https://databricks.com/wp-content/uploads/2017/10/CI-CD-BLOG4@2x-1024x211.png "databricks workflow")
+source: https://databricks.com/blog/2017/10/30/continuous-integration-continuous-delivery-databricks.html 
  
 ![example workflow](https://github.com/hjh17/dbloy/blob/master/uml.png?raw=true "example workflow")
  
