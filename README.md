@@ -2,13 +2,31 @@
 
 A Databricks deployment CLI tool to enable Continuous Delivery of PySpark Notebooks based jobs.
 
+
 ## Installation
 
 ````bash
 $ pip install dbloy
 ````
 
-## Example Workflow
+## Usage
+
+Authenticate with Databricks using authentication token:
+
+```bash
+$ dbloy configure 
+```
+
+Update Databricks Job 
+
+```bash
+$ dbloy apply --deploy-yml deploy.yml --configmap-yml configmap.yml --version <my_version_number>
+```
+
+where `deploy.yml` and `configmap.yml` contain the Job specification. The Job version is specified in `<my_version_number>`
+
+
+## Workflow
 
 ![databricks workflow](https://databricks.com/wp-content/uploads/2017/10/CI-CD-BLOG4@2x-1024x211.png "databricks workflow")
 source: https://databricks.com/blog/2017/10/30/continuous-integration-continuous-delivery-databricks.html 
@@ -22,19 +40,13 @@ source: https://databricks.com/blog/2017/10/30/continuous-integration-continuous
 
 See [example/gitlab_my-etl-job](https://github.com/hjh17/dbloy/tree/master/example/gitlab_my-etl-job) for a example ETL repository using Gitlab's CI/CD.
 
-### Authenticate
-
-Authenticate with Databricks using authentication token:
-
-```bash
-$ dbloy configure 
-```
 
 A Deployment requires the following:
 
 * Deployment manifest
 * Configuration manifest
 * A main Databricks Notebook source file available locally. 
+* (Optional) Attached python library containing the core logic. This allows easier unit testing of 
 
 
 ### Creating a Deployment
