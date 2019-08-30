@@ -7,7 +7,7 @@ version = imp.load_source(
 
 setup(
     name='dbloy',
-    version='0.2.0',
+    version=version,
     description='Continuous Delivery tool for PySpark Notebooks based jobs on Databricks.',
     long_description=open('README.md').read(),
     long_description_content_type="text/markdown",
